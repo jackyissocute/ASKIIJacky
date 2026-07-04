@@ -8,6 +8,11 @@ export interface AsciiBackgroundOptions {
   cursorRadius?: number
   /** Soft falloff width outside the core void (px) */
   cursorFeather?: number
+  /** Extra void radius while showing the long-press hint on person hover */
+  hintVoidRadiusBoost?: number
+  /** Label shown in the cursor void while hovering the person silhouette */
+  hintLabel?: string
+  hintFontSize?: number
   /** Per-letter edge wobble strength (0–1) */
   cursorEdgeNoise?: number
   cursorStretchX?: number
@@ -47,6 +52,8 @@ export interface AsciiBackgroundOptions {
   /** Person-letter drift speed multiplier while color is hiding (typically higher) */
   colorHideDriftMultiplier?: number
 }
+
+import { dispatchAsciiPersonHover } from './asciiPersonHover'
 
 export interface AsciiBackgroundController {
   destroy: () => void
@@ -119,6 +126,9 @@ export function createAsciiBackground(
   const textColor = options.textColor ?? '#3d3d3d'
   const cursorRadius = options.cursorRadius ?? 88
   const cursorFeather = options.cursorFeather ?? 54
+  const hintVoidRadiusBoost = options.hintVoidRadiusBoost ?? 36
+  const hintLabel = options.hintLabel ?? 'long-press'
+  const hintFontSize = options.hintFontSize ?? 12
   const cursorEdgeNoise = options.cursorEdgeNoise ?? 0.2
   const cursorStretchX = options.cursorStretchX ?? 1.06
   const cursorStretchY = options.cursorStretchY ?? 0.9
@@ -158,6 +168,23 @@ export function createAsciiBackground(
   let mouseX = -9999
   let mouseY = -9999
 
+  let isOverPerson = false
+  let activeVoidRadius = cursorRadius
+  let activeVoidFeather = cursorFeather
+  let hintTextWidth = 0
+  let hintTextHeight = hintFontSize
+
+  const gridFontFamily = '"IBM Plex Mono", "JetBrains Mono", "SF Mono", Menlo, monospace'
+  const gridFont = `${fontWeight} ${fontSize}px ${gridFontFamily}`
+  const hintFont = `700 ${hintFontSize}px ${gridFontFamily}`
+
+  function measureHintLabel() {
+    mainCtx.font = hintFont
+    const metrics = mainCtx.measureText(hintLabel)
+    hintTextWidth = metrics.width
+    hintTextHeight = hintFontSize
+  }
+
   let portraitLayout: PortraitLayout | null = null
   let portraitPixels: PortraitPixels | null = null
   let colorPortraitPixels: PortraitPixels | null = null
@@ -196,6 +223,42 @@ export function createAsciiBackground(
     return row * cols + col
   }
 
+  function publishPersonHover() {
+    dispatchAsciiPersonHover({
+      active: isOverPerson,
+      x: mouseX,
+      y: mouseY,
+      label: hintLabel,
+    })
+  }
+
+  function pointerOverPerson(clientX: number, clientY: number) {
+    if (clientX < -9000 || colorMode !== 'idle') return false
+    const col = Math.floor(clientX / charWidth)
+    const row = Math.floor(clientY / charHeight)
+    return isPersonCell(col, row)
+  }
+
+  function updatePersonHoverState() {
+    const nextOver = pointerOverPerson(mouseX, mouseY)
+    const wasOver = isOverPerson
+    isOverPerson = nextOver
+
+    if (nextOver) {
+      measureHintLabel()
+      const textRadius = Math.hypot(hintTextWidth * 0.5 + 18, hintTextHeight * 0.5 + 16)
+      activeVoidRadius = Math.max(cursorRadius + hintVoidRadiusBoost, textRadius)
+      activeVoidFeather = cursorFeather + 22
+    } else {
+      activeVoidRadius = cursorRadius
+      activeVoidFeather = cursorFeather
+    }
+
+    if (nextOver !== wasOver || nextOver) {
+      publishPersonHover()
+    }
+  }
+
   function resetColorInteraction() {
     colorMode = 'idle'
     rippleRadius = 0
@@ -205,6 +268,7 @@ export function createAsciiBackground(
       clearTimeout(longPressTimer)
       longPressTimer = null
     }
+    updatePersonHoverState()
   }
 
   function analyzePersonLuminanceRange() {
@@ -560,10 +624,14 @@ export function createAsciiBackground(
   function beginLongPressReveal(clientX: number, clientY: number) {
     if (!colorPortraitPixels) return
 
+    isOverPerson = false
+    publishPersonHover()
     colorMode = 'reveal'
     rippleOriginX = clientX
     rippleOriginY = clientY
     rippleRadius = 0
+    activeVoidRadius = cursorRadius
+    activeVoidFeather = cursorFeather
     applyRevealStep()
   }
 
@@ -586,15 +654,17 @@ export function createAsciiBackground(
     const dist = Math.hypot(ex, ey)
 
     const hash = cellHash(col, row)
-    const wobble = ((hash % 1000) / 1000 - 0.5) * 2 * cursorEdgeNoise * cursorRadius
-    const angleWobble = Math.sin(Math.atan2(dy, dx) * 2.7 + hash * 0.0007) * cursorEdgeNoise * 0.35 * cursorRadius
+    const edgeNoise = isOverPerson ? cursorEdgeNoise * 0.45 : cursorEdgeNoise
+    const wobble = ((hash % 1000) / 1000 - 0.5) * 2 * edgeNoise * activeVoidRadius
+    const angleWobble =
+      Math.sin(Math.atan2(dy, dx) * 2.7 + hash * 0.0007) * edgeNoise * 0.35 * activeVoidRadius
     const adjustedDist = dist + wobble + angleWobble
 
-    const innerRadius = Math.max(8, cursorRadius - cursorFeather)
-    if (adjustedDist >= cursorRadius) return 0
+    const innerRadius = Math.max(8, activeVoidRadius - activeVoidFeather)
+    if (adjustedDist >= activeVoidRadius) return 0
     if (adjustedDist <= innerRadius) return 1
 
-    const edgeT = (adjustedDist - innerRadius) / (cursorRadius - innerRadius)
+    const edgeT = (adjustedDist - innerRadius) / (activeVoidRadius - innerRadius)
     return 1 - smoothstep(0, 1, edgeT)
   }
 
@@ -642,7 +712,7 @@ export function createAsciiBackground(
     const cy = row * charHeight + charHeight * 0.5
     const dx = cx - mouseX
     const dy = cy - mouseY
-    const effectRadius = cursorRadius + cursorFeather * 0.6
+    const effectRadius = activeVoidRadius + activeVoidFeather * 0.75
 
     if (dx * dx + dy * dy >= effectRadius * effectRadius * 1.6) {
       return false
@@ -653,6 +723,9 @@ export function createAsciiBackground(
     if (mask >= 1) return true
 
     const threshold = (cellHash(col, row) % 1000) / 1000
+    if (isOverPerson) {
+      return threshold < clamp01(mask + 0.12)
+    }
     return threshold < mask
   }
 
@@ -672,6 +745,7 @@ export function createAsciiBackground(
     portraitLayout = computePortraitLayout()
     rebuildRevealGrid()
     rebuildPersonCells()
+    measureHintLabel()
     resetColorInteraction()
   }
 
@@ -682,7 +756,7 @@ export function createAsciiBackground(
     mainCtx.fillStyle = backgroundColor
     mainCtx.fillRect(0, 0, width, height)
 
-    mainCtx.font = `${fontWeight} ${fontSize}px "IBM Plex Mono", "JetBrains Mono", "SF Mono", Menlo, monospace`
+    mainCtx.font = gridFont
     mainCtx.textBaseline = 'top'
 
     for (let row = 0; row < rows; row++) {
@@ -726,6 +800,7 @@ export function createAsciiBackground(
   function onPointerMove(event: PointerEvent) {
     mouseX = event.clientX
     mouseY = event.clientY
+    updatePersonHoverState()
 
     if (longPressTimer !== null) {
       const dx = event.clientX - pressAnchorX
@@ -790,11 +865,23 @@ export function createAsciiBackground(
     resize()
   }
 
+  function onPointerLeave() {
+    mouseX = -9999
+    mouseY = -9999
+    updatePersonHoverState()
+  }
+
   function tick(now: number) {
     const dt = lastTickNow ? Math.min(0.05, (now - lastTickNow) / 1000) : 0
     lastTickNow = now
     driftNow = now
     updateColorInteraction(dt)
+    if (colorMode !== 'idle' && isOverPerson) {
+      isOverPerson = false
+      activeVoidRadius = cursorRadius
+      activeVoidFeather = cursorFeather
+      publishPersonHover()
+    }
     render()
     animationFrameId = window.requestAnimationFrame(tick)
   }
@@ -827,8 +914,10 @@ export function createAsciiBackground(
   }
 
   resize()
+  measureHintLabel()
   animationFrameId = window.requestAnimationFrame(tick)
   window.addEventListener('resize', onResize)
+  document.addEventListener('mouseleave', onPointerLeave)
   window.addEventListener('pointermove', onPointerMove, { passive: true })
   window.addEventListener('pointerdown', onPointerDown)
   window.addEventListener('pointerup', onPointerUp)
@@ -839,7 +928,12 @@ export function createAsciiBackground(
     destroy() {
       window.cancelAnimationFrame(animationFrameId)
       cancelPendingLongPress()
+      if (isOverPerson) {
+        isOverPerson = false
+        publishPersonHover()
+      }
       window.removeEventListener('resize', onResize)
+      document.removeEventListener('mouseleave', onPointerLeave)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointerup', onPointerUp)

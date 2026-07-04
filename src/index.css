@@ -58,6 +58,24 @@ body {
   z-index: 0;
 }
 
+.long-press-hint {
+  position: fixed;
+  z-index: 20;
+  margin: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-geist-mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow:
+    0 0 10px rgb(255 255 255 / 0.95),
+    0 0 24px rgb(255 255 255 / 0.72);
+  white-space: nowrap;
+}
+
 .site-main {
   position: relative;
   z-index: 10;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { gsap } from 'gsap'
+import { ASCII_PERSON_HOVER_EVENT, type AsciiPersonHoverDetail } from '../lib/asciiPersonHover'
 import './TargetCursor.css'
 
 type TargetCursorProps = {
@@ -86,6 +87,23 @@ export default function TargetCursor({
     const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i
     return (hasTouchScreen && isSmallScreen) || mobileRegex.test(userAgent.toLowerCase())
   }, [])
+
+  useEffect(() => {
+    if (isMobile || !cursorRef.current) return
+
+    const cursor = cursorRef.current
+    const onPersonHover = (event: Event) => {
+      const { active } = (event as CustomEvent<AsciiPersonHoverDetail>).detail
+      cursor.style.opacity = active ? '0' : '1'
+    }
+
+    window.addEventListener(ASCII_PERSON_HOVER_EVENT, onPersonHover as EventListener)
+
+    return () => {
+      window.removeEventListener(ASCII_PERSON_HOVER_EVENT, onPersonHover as EventListener)
+      cursor.style.opacity = '1'
+    }
+  }, [isMobile])
 
   useEffect(() => {
     if (isMobile || !cursorRef.current) return

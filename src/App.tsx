@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AsciiInteractiveBackground } from './components/AsciiInteractiveBackground'
+import { LongPressHint } from './components/LongPressHint'
 import { SiteLayout } from './components/SiteLayout'
 import TargetCursor from './components/TargetCursor'
 import { ROUTER_BASENAME } from './config/site'
@@ -25,12 +26,6 @@ function App() {
       <FuzzyBurstProvider accent={accent}>
         <div className="app-shell">
           <AsciiInteractiveBackground />
-          <TargetCursor
-            spinDuration={2}
-            hideDefaultCursor
-            parallaxOn
-            cursorColorOnTarget={accent}
-          />
           <Routes>
             <Route
               element={
@@ -41,6 +36,13 @@ function App() {
               <Route path="projects" element={<ProjectsPage />} />
             </Route>
           </Routes>
+          <LongPressHint />
+          <TargetCursor
+            spinDuration={2}
+            hideDefaultCursor
+            parallaxOn
+            cursorColorOnTarget={accent}
+          />
         </div>
       </FuzzyBurstProvider>
     </BrowserRouter>
