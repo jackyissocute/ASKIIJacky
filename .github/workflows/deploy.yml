@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -34,7 +35,34 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment-retry.outputs.page_url || steps.deployment.outputs.page_url }}
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 900000
+          error_count: 15
+          reporting_interval: 10000
+
+      - name: Wait before retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+
+      - name: Retry deploy after transient failure
+        if: steps.deployment.outcome == 'failure'
+        id: deployment-retry
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 900000
+          error_count: 15
+          reporting_interval: 10000
+
+      - name: Fail if deploy did not succeed
+        if: steps.deployment.outcome == 'failure' && steps.deployment-retry.outcome != 'success'
+        run: |
+          echo "GitHub Pages deploy failed after retry."
+          exit 1
