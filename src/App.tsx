@@ -15,6 +15,8 @@ function App() {
         spinDuration={2}
         hideDefaultCursor
         parallaxOn
+        hoverDuration={0.12}
+        attractionRadius={64}
         cursorColorOnTarget={accent}
       />
       <SiteContent
