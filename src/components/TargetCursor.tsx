@@ -322,14 +322,23 @@ export default function TargetCursor({
 
     const mouseDownHandler = () => {
       if (!dotRef.current) return
-      gsap.to(dotRef.current, { scale: 0.7, duration: 0.12, overwrite: true })
-      gsap.to(cursor, { scale: 0.9, duration: 0.1, overwrite: true })
+      gsap.to(dotRef.current, { scale: 0.7, duration: 0.12, overwrite: 'auto' })
+      gsap.to(cursor, { scale: 0.9, duration: 0.1, overwrite: 'auto' })
     }
 
     const mouseUpHandler = () => {
       if (!dotRef.current) return
-      gsap.to(dotRef.current, { scale: 1, duration: 0.12, overwrite: true })
-      gsap.to(cursor, { scale: 1, duration: 0.1, overwrite: true })
+      gsap.to(dotRef.current, { scale: 1, duration: 0.12, overwrite: 'auto' })
+      gsap.to(cursor, { scale: 1, duration: 0.1, overwrite: 'auto' })
+      if (!activeTarget) {
+        const hasRotationTween = gsap.getTweensOf(cursor).some((tween) => {
+          const vars = tween.vars as { rotation?: unknown }
+          return vars.rotation !== undefined
+        })
+        if (!hasRotationTween) {
+          resumeSpin()
+        }
+      }
     }
 
     window.addEventListener('mousemove', moveHandler, { passive: true })
