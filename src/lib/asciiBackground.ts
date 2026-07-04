@@ -46,6 +46,12 @@ export interface AsciiBackgroundOptions {
   colorRevealDriftMultiplier?: number
   /** Person-letter drift speed multiplier while color is hiding (typically higher) */
   colorHideDriftMultiplier?: number
+  /** Extend left shoulder to meet the screen bottom edge */
+  shoulderExtensionEnabled?: boolean
+  /** Join height as fraction of portrait height above the bottom edge */
+  shoulderJoinRatio?: number
+  /** Max horizontal reach of fill as fraction of portrait width */
+  shoulderMaxWidthRatio?: number
 }
 
 export interface AsciiBackgroundController {
@@ -77,6 +83,10 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value))
 }
 
+function clamp255(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
 function smoothstep(edge0: number, edge1: number, value: number) {
   const t = clamp01((value - edge0) / (edge1 - edge0))
   return t * t * (3 - 2 * t)
@@ -93,6 +103,13 @@ interface PortraitSample {
   luminance: number
   alpha: number
   isPerson: boolean
+}
+
+interface ExtensionCellSample {
+  luminance: number
+  r: number
+  g: number
+  b: number
 }
 
 interface PortraitPixels {
@@ -143,6 +160,9 @@ export function createAsciiBackground(
   const colorHideDriftMultiplier =
     options.colorHideDriftMultiplier ??
     colorRevealDriftMultiplier * (colorHideSpeed / colorRevealSpeed)
+  const shoulderExtensionEnabled = options.shoulderExtensionEnabled ?? true
+  const shoulderJoinRatio = options.shoulderJoinRatio ?? 0.34
+  const shoulderMaxWidthRatio = options.shoulderMaxWidthRatio ?? 0.44
 
   const baseRgb = parseHexColor(textColor)
 
@@ -166,6 +186,7 @@ export function createAsciiBackground(
 
   let personCells: Uint8Array = new Uint8Array(0)
   let revealGrid: Uint8Array = new Uint8Array(0)
+  const extensionSamples = new Map<number, ExtensionCellSample>()
 
   let colorMode: ColorInteractionMode = 'idle'
   let rippleRadius = 0
@@ -254,7 +275,6 @@ export function createAsciiBackground(
     }
 
     portraitPixels = cacheImagePixels(image, image.naturalWidth, image.naturalHeight)
-    analyzePersonLuminanceRange()
     rebuildPersonCells()
   }
 
@@ -359,10 +379,206 @@ export function createAsciiBackground(
   }
 
   function samplePortraitCell(col: number, row: number) {
+    const ext = extensionSamples.get(cellIndex(col, row))
+    if (ext) {
+      return { luminance: ext.luminance, alpha: 255, isPerson: true }
+    }
+
     return samplePortraitCellFrom(portraitPixels, col, row)
   }
 
+  function sampleImagePersonRgb(col: number, row: number) {
+    if (colorPortraitPixels) {
+      const cellX0 = col * charWidth
+      const cellY0 = row * charHeight
+      const cellX1 = cellX0 + charWidth
+      const cellY1 = cellY0 + charHeight
+      if (!portraitLayout) return null
+
+      const { left, top, width, height } = portraitLayout
+      if (cellX1 <= left || cellX0 >= left + width || cellY1 <= top || cellY0 >= top + height) {
+        return null
+      }
+
+      const imgW = colorPortraitPixels.width
+      const imgH = colorPortraitPixels.height
+      const data = colorPortraitPixels.data
+      const sampleX0 = Math.max(0, Math.floor(((Math.max(cellX0, left) - left) / width) * imgW))
+      const sampleY0 = Math.max(0, Math.floor(((Math.max(cellY0, top) - top) / height) * imgH))
+      const sampleX1 = Math.min(imgW, Math.ceil(((Math.min(cellX1, left + width) - left) / width) * imgW))
+      const sampleY1 = Math.min(imgH, Math.ceil(((Math.min(cellY1, top + height) - top) / height) * imgH))
+
+      if (sampleX1 <= sampleX0 || sampleY1 <= sampleY0) return null
+
+      let rSum = 0
+      let gSum = 0
+      let bSum = 0
+      let count = 0
+
+      for (let iy = sampleY0; iy < sampleY1; iy++) {
+        for (let ix = sampleX0; ix < sampleX1; ix++) {
+          const pixel = readPixel(data, imgW, ix, iy)
+          if (!pixel.isPerson) continue
+          const index = (iy * imgW + ix) * 4
+          rSum += data[index]
+          gSum += data[index + 1]
+          bSum += data[index + 2]
+          count++
+        }
+      }
+
+      if (count === 0) return null
+      return {
+        r: rSum / count,
+        g: gSum / count,
+        b: bSum / count,
+      }
+    }
+
+    const sample = samplePortraitCellFrom(portraitPixels, col, row)
+    if (!sample?.isPerson || !portraitPixels) return null
+
+    const { left, top, width, height } = portraitLayout!
+    const cellX = col * charWidth + charWidth * 0.5
+    const cellY = row * charHeight + charHeight * 0.5
+    const imgW = portraitPixels.width
+    const imgH = portraitPixels.height
+    const ix = Math.max(0, Math.min(imgW - 1, Math.floor(((cellX - left) / width) * imgW)))
+    const iy = Math.max(0, Math.min(imgH - 1, Math.floor(((cellY - top) / height) * imgH)))
+    const index = (iy * imgW + ix) * 4
+    const data = portraitPixels.data
+
+    return {
+      r: data[index],
+      g: data[index + 1],
+      b: data[index + 2],
+    }
+  }
+
+  function imagePersonLeftCol(row: number) {
+    if (!portraitLayout) return null
+
+    const cy = row * charHeight + charHeight * 0.5
+    const { left, top, width, height } = portraitLayout
+    if (cy < top || cy > top + height) return null
+
+    let minCol: number | null = null
+    for (let col = 0; col < cols; col++) {
+      const cx = col * charWidth + charWidth * 0.5
+      if (cx < left || cx > left + width) continue
+      if (samplePortraitCellFrom(portraitPixels, col, row)?.isPerson) {
+        minCol = minCol === null ? col : Math.min(minCol, col)
+      }
+    }
+
+    return minCol
+  }
+
+  function findExtensionReference(col: number, row: number) {
+    for (let scanCol = col + 1; scanCol < cols && scanCol <= col + 36; scanCol++) {
+      const sample = samplePortraitCellFrom(portraitPixels, scanCol, row)
+      if (!sample?.isPerson) continue
+      const rgb = sampleImagePersonRgb(scanCol, row)
+      if (!rgb) continue
+      return { luminance: sample.luminance, ...rgb }
+    }
+
+    for (let scanRow = row - 1; scanRow >= 0 && scanRow >= row - 10; scanRow--) {
+      for (let scanCol = col; scanCol < cols && scanCol <= col + 28; scanCol++) {
+        const sample = samplePortraitCellFrom(portraitPixels, scanCol, scanRow)
+        if (!sample?.isPerson) continue
+        const rgb = sampleImagePersonRgb(scanCol, scanRow)
+        if (!rgb) continue
+        return { luminance: sample.luminance, ...rgb }
+      }
+    }
+
+    return { luminance: 0.34, r: 72, g: 68, b: 64 }
+  }
+
+  function synthesizeExtensionSample(col: number, row: number): ExtensionCellSample {
+    const ref = findExtensionReference(col, row)
+    const hash = cellHash(col, row)
+    const n = (hash % 1000) / 1000 - 0.5
+    const fold =
+      Math.sin(col * 0.71 + row * 0.37 + hash * 0.0016) * 0.07 +
+      Math.sin(col * 0.23 - row * 0.19 + hash * 0.0024) * 0.04
+    const depth = clamp01((row * charHeight) / Math.max(1, viewportH))
+
+    const luminance = clamp01(ref.luminance - depth * 0.05 + n * 0.1 + fold)
+    const r = clamp255(ref.r + n * 16 + fold * 22 - depth * 8)
+    const g = clamp255(ref.g + n * 14 + fold * 20 - depth * 9)
+    const b = clamp255(ref.b + n * 12 + fold * 18 - depth * 10)
+
+    return { luminance, r, g, b }
+  }
+
+  function applyShoulderExtension() {
+    extensionSamples.clear()
+    if (!shoulderExtensionEnabled || !portraitLayout || !portraitPixels) return
+
+    const { left, top, width, height } = portraitLayout
+    const bottom = top + height
+    const joinY = bottom - height * shoulderJoinRatio
+    const joinRowStart = Math.max(0, Math.floor(joinY / charHeight))
+    const defaultFillToCol = Math.min(cols - 1, Math.ceil((left + width * shoulderMaxWidthRatio) / charWidth))
+
+    let joinRow = joinRowStart
+    while (joinRow < rows && imagePersonLeftCol(joinRow) === null) {
+      joinRow++
+    }
+
+    const joinCol = imagePersonLeftCol(joinRow)
+    if (joinCol === null) return
+
+    const joinRowY = joinRow * charHeight
+    const bottomY = viewportH
+
+    for (let row = joinRow; row < rows; row++) {
+      const rowY = row * charHeight + charHeight * 0.5
+      const rowProgress = clamp01((rowY - joinRowY) / Math.max(1, bottomY - joinRowY))
+      const ease = smoothstep(0, 1, rowProgress)
+      const fillFromCol = Math.max(0, Math.floor(joinCol * (1 - ease)))
+      const imageLeftCol = imagePersonLeftCol(row)
+      const fillToCol = imageLeftCol ?? defaultFillToCol
+
+      if (fillToCol <= fillFromCol) continue
+
+      for (let col = fillFromCol; col < fillToCol; col++) {
+        const cx = col * charWidth + charWidth * 0.5
+        if (cx > left + width * 0.5) continue
+        if (samplePortraitCellFrom(portraitPixels, col, row)?.isPerson) continue
+
+        const idx = cellIndex(col, row)
+        const edgeT = (col - fillFromCol) / Math.max(1, fillToCol - fillFromCol - 1)
+        const hash = cellHash(col, row)
+
+        if (edgeT < 0.22) {
+          const keep = (hash % 1000) / 1000
+          if (keep > 0.18 + edgeT * 1.8) continue
+        }
+
+        personCells[idx] = 1
+        extensionSamples.set(idx, synthesizeExtensionSample(col, row))
+      }
+    }
+  }
+
+  function finalizePersonLuminanceRange() {
+    analyzePersonLuminanceRange()
+    for (const ext of extensionSamples.values()) {
+      if (ext.luminance < personLumMin) personLumMin = ext.luminance
+      if (ext.luminance > personLumMax) personLumMax = ext.luminance
+    }
+    personLumMax = Math.max(personLumMin + 0.001, personLumMax)
+  }
+
   function sampleColorCell(col: number, row: number): string | null {
+    const ext = extensionSamples.get(cellIndex(col, row))
+    if (ext) {
+      return `rgb(${ext.r}, ${ext.g}, ${ext.b})`
+    }
+
     if (!colorPortraitPixels || !portraitLayout) return null
 
     const cellX0 = col * charWidth
@@ -492,16 +708,20 @@ export function createAsciiBackground(
 
   function rebuildPersonCells() {
     personCells = new Uint8Array(cols * rows)
+    extensionSamples.clear()
     if (!portraitPixels) return
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        const sample = samplePortraitCell(col, row)
+        const sample = samplePortraitCellFrom(portraitPixels, col, row)
         if (sample?.isPerson) {
           personCells[cellIndex(col, row)] = 1
         }
       }
     }
+
+    applyShoulderExtension()
+    finalizePersonLuminanceRange()
   }
 
   function rebuildRevealGrid() {
