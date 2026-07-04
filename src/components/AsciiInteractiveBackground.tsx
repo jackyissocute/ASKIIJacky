@@ -34,6 +34,7 @@ export function AsciiInteractiveBackground() {
       colorRippleFeather: 78,
       colorRippleStretchX: 1.1,
       colorRippleStretchY: 0.88,
+      colorRevealDriftMultiplier: 2.4,
       fontWeight: 600,
     })
 

@@ -42,6 +42,10 @@ export interface AsciiBackgroundOptions {
   colorRippleFeather?: number
   colorRippleStretchX?: number
   colorRippleStretchY?: number
+  /** Person-letter drift speed multiplier while color is revealing */
+  colorRevealDriftMultiplier?: number
+  /** Person-letter drift speed multiplier while color is hiding (typically higher) */
+  colorHideDriftMultiplier?: number
 }
 
 export interface AsciiBackgroundController {
@@ -135,6 +139,10 @@ export function createAsciiBackground(
   const colorRippleFeather = options.colorRippleFeather ?? 78
   const colorRippleStretchX = options.colorRippleStretchX ?? 1.1
   const colorRippleStretchY = options.colorRippleStretchY ?? 0.88
+  const colorRevealDriftMultiplier = options.colorRevealDriftMultiplier ?? 2.4
+  const colorHideDriftMultiplier =
+    options.colorHideDriftMultiplier ??
+    colorRevealDriftMultiplier * (colorHideSpeed / colorRevealSpeed)
 
   const baseRgb = parseHexColor(textColor)
 
@@ -594,13 +602,27 @@ export function createAsciiBackground(
     return cellHash(col, row) % driftStride === 0
   }
 
+  /** Boost letter drift on person cells awaiting or recovering color, without changing drift cell selection */
+  function driftSpeedMultiplier(col: number, row: number) {
+    if (!isPersonCell(col, row)) return 1
+
+    const idx = cellIndex(col, row)
+    if (revealGrid[idx] === 1) return 1
+
+    if (colorMode === 'reveal') return colorRevealDriftMultiplier
+    if (colorMode === 'hide') return colorHideDriftMultiplier
+
+    return 1
+  }
+
   function cellDriftSlot(col: number, row: number, now: number) {
     const hash = cellHash(col, row)
     const phaseMs = (hash >>> 4) % driftIntervalMs
     const jitter = (hash >>> 12) % (driftIntervalJitterMs * 2 + 1) - driftIntervalJitterMs
     const intervalMs = Math.max(120, driftIntervalMs + jitter)
+    const speedMult = driftSpeedMultiplier(col, row)
 
-    return Math.floor((now + phaseMs) / intervalMs)
+    return Math.floor((now * speedMult + phaseMs) / intervalMs)
   }
 
   function charForCell(col: number, row: number, now: number) {
