@@ -43,45 +43,25 @@ export const aboutContent = {
 
 export const projectsContent = {
   viewAllHref: '/projects',
-  homePreviewCount: 4,
+  homePreviewCount: 3,
   items: [
     {
-      name: 'tsuki',
-      language: 'typescript',
-      description: 'just another anime and manga tracker with an insanely good UI',
-      href: 'https://github.com/d1rshan/tsuki',
+      name: 'lisper',
+      language: 'protein engineering',
+      description: 'lithium selective peptide engineering researh',
+      href: 'https://jackyissocute.github.io/LiSPER-Dashboard/',
     },
     {
-      name: 'decktype',
-      language: 'typescript',
-      description: 'a monkeytype-inspired typing games platform with competitive multiplayer',
-      href: 'https://github.com/d1rshan/decktype',
-    },
-    {
-      name: 'ghstats-cli',
+      name: 'supplier_doc_intelligence',
       language: 'python',
-      description:
-        'a cli to display your github contributions heatmap, streaks, and activity over the past year',
-      href: 'https://github.com/d1rshan/ghstats-cli',
+      description: 'pfizer extern inspired protable agent skills for pharmadoc',
+      href: 'https://github.com/jackyissocute/supplier-doc-intelligence',
     },
     {
-      name: 'tmplockr',
-      language: 'typescript',
-      description: 'a temporary file and note sharing platform with a clean, modern UI and custom auth',
-      href: 'https://github.com/d1rshan/tmplockr',
-    },
-    {
-      name: 'vitify',
-      language: 'dart',
-      description: 'a flutter app for university students to track academics and stay on top of college life',
-      href: 'https://github.com/d1rshan/vitify',
-    },
-    {
-      name: 'taskflow',
-      language: 'typescript',
-      description:
-        'a visual workflow automation engine to chain apis, transform data, and build automations visually',
-      href: 'https://github.com/d1rshan/taskflow',
+      name: 'dek_supercoil',
+      language: 'molecular',
+      description: 'research with prof. ferdinand kappes',
+      href: 'https://docs.google.com/presentation/d/1b0qUJhPdiuNzq0_5MthvrSorVre94Fhm/edit?usp=sharing&ouid=107816883656707342855&rtpof=true&sd=true',
     },
   ] satisfies Project[],
 }
