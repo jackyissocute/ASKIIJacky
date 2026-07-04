@@ -161,6 +161,15 @@ body {
   color: var(--color-accent);
 }
 
+.site-theme-button {
+  min-width: 4.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-theme-button-label::before {
+  content: var(--color-accent);
+}
+
 .site-header-actions {
   display: none;
   flex-direction: column;

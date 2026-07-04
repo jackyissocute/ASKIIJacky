@@ -90,7 +90,7 @@ export function SiteContent({ accent, onCycleTheme }: SiteContentProps) {
               aria-label="Cycle theme"
               onClick={onCycleTheme}
             >
-              {accent}
+              <span className="site-theme-button-label" aria-hidden="true" />
             </button>
           </nav>
         </div>
