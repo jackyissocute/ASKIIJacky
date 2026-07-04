@@ -43,15 +43,18 @@ const getCornerTargets = (
   offsetY: number,
   borderWidth: number,
   cornerSize: number,
-) => [
-  { x: rect.left - borderWidth - offsetX, y: rect.top - borderWidth - offsetY },
-  { x: rect.right + borderWidth - cornerSize - offsetX, y: rect.top - borderWidth - offsetY },
-  {
-    x: rect.right + borderWidth - cornerSize - offsetX,
-    y: rect.bottom + borderWidth - cornerSize - offsetY,
-  },
-  { x: rect.left - borderWidth - offsetX, y: rect.bottom + borderWidth - cornerSize - offsetY },
-]
+) => {
+  const half = cornerSize / 2
+  return [
+    { x: rect.left - borderWidth - half - offsetX, y: rect.top - borderWidth - half - offsetY },
+    { x: rect.right + borderWidth + half - offsetX, y: rect.top - borderWidth - half - offsetY },
+    {
+      x: rect.right + borderWidth + half - offsetX,
+      y: rect.bottom + borderWidth + half - offsetY,
+    },
+    { x: rect.left - borderWidth - half - offsetX, y: rect.bottom + borderWidth + half - offsetY },
+  ]
+}
 
 export default function TargetCursor({
   targetSelector = '.cursor-target',
@@ -99,16 +102,17 @@ export default function TargetCursor({
 
     const borderWidth = 3
     const cornerSize = 12
+    const cornerSpread = cornerSize * 1.5
     const restPositions = [
-      { x: -cornerSize * 1.5, y: -cornerSize * 1.5 },
-      { x: cornerSize * 0.5, y: -cornerSize * 1.5 },
-      { x: cornerSize * 0.5, y: cornerSize * 0.5 },
-      { x: -cornerSize * 1.5, y: cornerSize * 0.5 },
+      { x: -cornerSpread, y: -cornerSpread },
+      { x: cornerSpread, y: -cornerSpread },
+      { x: cornerSpread, y: cornerSpread },
+      { x: -cornerSpread, y: cornerSpread },
     ]
 
     const setCornerTransform = corners.map((corner) => {
       return (x: number, y: number) => {
-        corner.style.transform = `translate3d(${x}px, ${y}px, 0)`
+        corner.style.transform = `translate3d(${x}px, ${y}px, 0) translate3d(-50%, -50%, 0)`
       }
     })
 
@@ -128,10 +132,9 @@ export default function TargetCursor({
     cursorX = mouseX - initialOffset.x
     cursorY = mouseY - initialOffset.y
     gsap.set(cursor, {
-      xPercent: -50,
-      yPercent: -50,
       x: cursorX,
       y: cursorY,
+      transformOrigin: '0px 0px',
       force3D: true,
     })
 
