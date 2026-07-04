@@ -52,7 +52,7 @@ export interface AsciiBackgroundOptions {
 }
 
 import { dispatchAsciiPersonHover } from './asciiPersonHover'
-import { isViewAllPriorityZone } from './viewAllProximity'
+import { isLongPressSuppressedZone } from './cursorTargetProximity'
 
 export interface AsciiBackgroundController {
   destroy: () => void
@@ -234,7 +234,7 @@ export function createAsciiBackground(
   }
 
   function updatePersonHoverState() {
-    const suppressHint = isViewAllPriorityZone(mouseX, mouseY)
+    const suppressHint = isLongPressSuppressedZone(mouseX, mouseY)
     const nextOver = pointerOverPerson(mouseX, mouseY) && !suppressHint
     const wasOver = isOverPerson
     isOverPerson = nextOver

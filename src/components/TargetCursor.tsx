@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ASCII_PERSON_HOVER_EVENT, type AsciiPersonHoverDetail } from '../lib/asciiPersonHover'
-import { getViewAllProximityTarget } from '../lib/viewAllProximity'
+import { getPriorityProximityTarget } from '../lib/cursorTargetProximity'
 import './TargetCursor.css'
 
 type TargetCursorProps = {
@@ -223,7 +223,7 @@ export default function TargetCursor({
       const direct = el?.closest(targetSelector)
       if (direct) return direct
 
-      return getViewAllProximityTarget(x, y)
+      return getPriorityProximityTarget(x, y)
     }
 
     const activateTarget = (target: Element) => {
