@@ -102,7 +102,7 @@ export default function TargetCursor({
 
     const borderWidth = 3
     const cornerSize = 12
-    const cornerSpread = cornerSize * 1.5
+    const cornerSpread = cornerSize
     const restPositions = [
       { x: -cornerSpread, y: -cornerSpread },
       { x: cornerSpread, y: -cornerSpread },
