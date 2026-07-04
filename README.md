@@ -1,8 +1,8 @@
-# ASKIIJacky — Interactive ASCII Background
+# hellojacky — Interactive ASCII Background
 
 Full-screen monospace canvas inspired by [contentarchitecture.dev](https://contentarchitecture.dev), deployed as a GitHub Pages project site.
 
-**Live site:** [jackyissocute.github.io/ASKIIJacky](https://jackyissocute.github.io/ASKIIJacky/)
+**Live site:** [jackyissocute.github.io/hellojacky](https://jackyissocute.github.io/hellojacky/)
 
 ## Features
 
@@ -23,7 +23,7 @@ Full-screen monospace canvas inspired by [contentarchitecture.dev](https://conte
 | [`public/jacky-lin-color.png`](public/jacky-lin-color.png) | Color portrait revealed on long-press |
 | [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) | Build with Vite and deploy `dist/` to GitHub Pages |
 
-All runtime asset URLs are resolved through `repoAsset()` in [`src/lib/repoAsset.ts`](src/lib/repoAsset.ts), which prefixes paths with the GitHub Pages base (`/ASKIIJacky/`). Portrait PNGs live in [`public/`](public/) and are copied verbatim into `dist/` on build.
+All runtime asset URLs are resolved through `repoAsset()` in [`src/lib/repoAsset.ts`](src/lib/repoAsset.ts), which prefixes paths with the GitHub Pages base (`/hellojacky/`). Portrait PNGs live in [`public/`](public/) and are copied verbatim into `dist/` on build.
 
 ## Local development
 
@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173/ASKIIJacky/](http://localhost:5173/ASKIIJacky/) (note the repo base path matches GitHub Pages).
+Open [http://localhost:5173/hellojacky/](http://localhost:5173/hellojacky/) (note the repo base path matches GitHub Pages).
 
 ## Deployment
 
@@ -40,7 +40,7 @@ The site deploys automatically when changes are pushed to `main`.
 
 1. **Source:** GitHub Actions ([`deploy.yml`](.github/workflows/deploy.yml))
 2. **Build:** `npm ci && npm run build` → output in `dist/`
-3. **Host:** GitHub Pages at `https://jackyissocute.github.io/ASKIIJacky/`
+3. **Host:** GitHub Pages at `https://jackyissocute.github.io/hellojacky/`
 
 To redeploy after editing the repo, merge or push to `main` and watch the **Deploy to GitHub Pages** workflow under the repository **Actions** tab.
 

@@ -1,8 +1,8 @@
 {
-  "name": "askiijacky",
+  "name": "hellojacky",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://jackyissocute.github.io/ASKIIJacky",
+  "homepage": "https://jackyissocute.github.io/hellojacky",
   "type": "module",
   "scripts": {
     "dev": "vite",

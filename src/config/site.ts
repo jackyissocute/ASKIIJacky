@@ -1,5 +1,5 @@
 export const GITHUB_OWNER = 'jackyissocute'
-export const REPO_NAME = 'ASKIIJacky'
+export const REPO_NAME = 'hellojacky'
 
 /** Must match the GitHub Pages project-site path and `base` in vite.config.ts */
 export const GITHUB_PAGES_BASE = `/${REPO_NAME}/`
