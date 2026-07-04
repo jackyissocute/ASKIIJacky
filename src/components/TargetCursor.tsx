@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { gsap } from 'gsap'
 import { ASCII_PERSON_HOVER_EVENT, type AsciiPersonHoverDetail } from '../lib/asciiPersonHover'
-import {
-  getViewAllProximityTarget,
-  VIEW_ALL_SELECTOR,
-} from '../lib/viewAllProximity'
+import { getViewAllProximityTarget } from '../lib/viewAllProximity'
 import './TargetCursor.css'
 
 type TargetCursorProps = {
@@ -257,12 +254,7 @@ export default function TargetCursor({
 
       const leaveHandler = () => {
         cleanupTarget(target)
-        const stillTarget = resolveHoverTarget(lastMouseRef.current.x, lastMouseRef.current.y)
-        if (stillTarget) {
-          activateTarget(stillTarget)
-          return
-        }
-        deactivateTarget()
+        syncActiveTarget(lastMouseRef.current.x, lastMouseRef.current.y)
       }
 
       currentLeaveHandler = leaveHandler
@@ -294,7 +286,7 @@ export default function TargetCursor({
       cursorY += (targetCursorY - cursorY) * cursorEase
       gsap.set(cursor, { x: cursorX, y: cursorY, force3D: true })
 
-      const strengthEase = targetStrength > strength ? 0.42 : 0.34
+      const strengthEase = targetStrength > strength ? 0.38 : 0.62
       strength += (targetStrength - strength) * strengthEase * dt
       if (Math.abs(targetStrength - strength) < 0.001) {
         strength = targetStrength
@@ -340,7 +332,7 @@ export default function TargetCursor({
         return
       }
 
-      if (activeTarget?.matches(VIEW_ALL_SELECTOR)) {
+      if (activeTarget) {
         cleanupTarget(activeTarget)
         deactivateTarget()
       }

@@ -1,5 +1,5 @@
 export const VIEW_ALL_SELECTOR = '.site-view-all'
-export const VIEW_ALL_PROXIMITY_PADDING = 88
+export const VIEW_ALL_PROXIMITY_PADDING = 72
 
 export function getViewAllElement(): Element | null {
   return document.querySelector(VIEW_ALL_SELECTOR)
