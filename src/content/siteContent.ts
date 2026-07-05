@@ -53,7 +53,7 @@ export const projectsContent = {
     {
       name: 'supplier_doc_intelligence',
       language: 'python',
-      description: 'pfizer extern inspired protable agent skills for pharmadoc',
+      description: 'pfizer extern inspired portable agent skills for pharmadoc',
       href: 'https://github.com/jackyissocute/supplier-doc-intelligence',
     },
     {
