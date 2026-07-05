@@ -132,11 +132,3 @@ export function SiteHeader({ accent, onCycleTheme }: SiteHeaderProps) {
     </header>
   )
 }
-
-export function MobileSocialLinks() {
-  return (
-    <div className="site-social-grid site-social-grid-mobile">
-      <SocialLinks size={20} className="site-social-link site-social-link-accent" />
-    </div>
-  )
-}

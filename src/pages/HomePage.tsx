@@ -1,5 +1,4 @@
 import { aboutContent, projectsContent } from '../content/siteContent'
-import { MobileSocialLinks } from '../components/SiteHeader'
 import { ProjectList } from '../components/ProjectList'
 import { AccentFuzzyHeading } from '../components/AccentFuzzyHeading'
 
@@ -24,10 +23,7 @@ export function HomePage() {
               </p>
             ))}
 
-            <div className="site-about-footer">
-              <p className="site-body-text">{aboutContent.footer}</p>
-              <MobileSocialLinks />
-            </div>
+            <p className="site-body-text">{aboutContent.footer}</p>
           </div>
         </section>
 
