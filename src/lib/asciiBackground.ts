@@ -721,10 +721,19 @@ export function createAsciiBackground(
     return threshold < mask
   }
 
+  function getViewportSize() {
+    const visualViewport = window.visualViewport
+    return {
+      width: Math.round(visualViewport?.width ?? document.documentElement.clientWidth),
+      height: Math.round(visualViewport?.height ?? document.documentElement.clientHeight),
+    }
+  }
+
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2)
-    viewportW = window.innerWidth
-    viewportH = window.innerHeight
+    const { width, height } = getViewportSize()
+    viewportW = width
+    viewportH = height
 
     canvas.width = Math.floor(viewportW * dpr)
     canvas.height = Math.floor(viewportH * dpr)
@@ -903,6 +912,8 @@ export function createAsciiBackground(
   measureHintLabel()
   animationFrameId = window.requestAnimationFrame(tick)
   window.addEventListener('resize', onResize)
+  window.visualViewport?.addEventListener('resize', onResize)
+  window.visualViewport?.addEventListener('scroll', onResize)
   document.addEventListener('mouseleave', onPointerLeave)
   window.addEventListener('pointermove', onPointerMove, { passive: true })
   window.addEventListener('pointerdown', onPointerDown)
@@ -918,6 +929,8 @@ export function createAsciiBackground(
         publishPersonHover()
       }
       window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('scroll', onResize)
       document.removeEventListener('mouseleave', onPointerLeave)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerdown', onPointerDown)
