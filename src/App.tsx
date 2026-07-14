@@ -13,20 +13,27 @@ import { preloadCriticalAssets } from './lib/preloadAssets'
 import { HomePage } from './pages/HomePage'
 import { ProjectsPage } from './pages/ProjectsPage'
 
+/** Force boot UI on screen at least this long (fast networks still see the beat) */
+const MIN_BOOT_MS = 3200
+
 function App() {
   const [themeIndex, setThemeIndex] = useState(0)
   const [progress, setProgress] = useState(0)
   const [assetsReady, setAssetsReady] = useState(false)
   const [bootComplete, setBootComplete] = useState(false)
+  const [asciiReady, setAsciiReady] = useState(false)
+  const [minBootElapsed, setMinBootElapsed] = useState(false)
   const [reveal, setReveal] = useState(false)
   const [showBoot, setShowBoot] = useState(true)
 
   const accent = ACCENT_THEMES[themeIndex]
-  // Mount shell under boot once assets decoded so ASCII/canvas can warm up
+  // Mount shell under boot as soon as preload finishes so ASCII can build portrait
   const shellMounted = assetsReady
+  const canReveal = bootComplete && asciiReady && minBootElapsed && shellMounted
 
   useEffect(() => {
     document.documentElement.classList.add('is-booting')
+    const minTimer = window.setTimeout(() => setMinBootElapsed(true), MIN_BOOT_MS)
     let cancelled = false
 
     preloadCriticalAssets(({ progress: p }) => {
@@ -38,17 +45,16 @@ function App() {
 
     return () => {
       cancelled = true
+      window.clearTimeout(minTimer)
     }
   }, [])
 
-  // Crossfade after shell has a moment to paint under the boot overlay
   useEffect(() => {
-    if (!shellMounted || !bootComplete) return
-    const warm = window.setTimeout(() => {
-      setReveal(true)
-    }, 200)
-    return () => window.clearTimeout(warm)
-  }, [shellMounted, bootComplete])
+    if (!canReveal) return
+    // One frame so entering→ready opacity transition can run
+    const id = window.requestAnimationFrame(() => setReveal(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [canReveal])
 
   useEffect(() => {
     if (showBoot) return
@@ -57,6 +63,10 @@ function App() {
 
   const handleBootComplete = useCallback(() => {
     setBootComplete(true)
+  }, [])
+
+  const handleAsciiReady = useCallback(() => {
+    setAsciiReady(true)
   }, [])
 
   const handleBootExited = useCallback(() => {
@@ -79,7 +89,7 @@ function App() {
                 reveal ? ' app-shell--ready' : ' app-shell--entering'
               }`}
             >
-              <AsciiInteractiveBackground />
+              <AsciiInteractiveBackground onReady={handleAsciiReady} />
               <Routes>
                 <Route
                   element={

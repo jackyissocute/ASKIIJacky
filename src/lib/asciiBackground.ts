@@ -49,11 +49,14 @@ export interface AsciiBackgroundOptions {
   colorRevealDriftMultiplier?: number
   /** Person-letter drift speed multiplier while color is hiding (typically higher) */
   colorHideDriftMultiplier?: number
+  /** Fires once portrait luminance (+ color if any) are loaded and person cells built */
+  onPortraitReady?: () => void
 }
 
 import { dispatchAsciiPersonHover } from './asciiPersonHover'
 import { isLongPressSuppressedZone } from './cursorTargetProximity'
 import { expSmooth } from './expSmooth'
+import { getCachedImage } from './preloadAssets'
 
 export interface AsciiBackgroundController {
   destroy: () => void
@@ -206,20 +209,30 @@ export function createAsciiBackground(
   let rippleOriginY = 0
   let hideProgress = 0
 
-  const image = portraitUrl ? new Image() : null
-  if (image) {
+  const cachedLuminance = portraitUrl ? getCachedImage(portraitUrl) : undefined
+  const cachedColor = portraitColorUrl ? getCachedImage(portraitColorUrl) : undefined
+
+  const image = portraitUrl ? (cachedLuminance ?? new Image()) : null
+  if (image && !cachedLuminance) {
     image.crossOrigin = 'anonymous'
     image.decoding = 'async'
   }
 
-  const colorImage = portraitColorUrl ? new Image() : null
-  if (colorImage) {
+  const colorImage = portraitColorUrl ? (cachedColor ?? new Image()) : null
+  if (colorImage && !cachedColor) {
     colorImage.crossOrigin = 'anonymous'
     colorImage.decoding = 'async'
   }
 
   const pixelCanvas = document.createElement('canvas')
   const pixelCtx = pixelCanvas.getContext('2d', { willReadFrequently: true })
+
+  let portraitReadyNotified = false
+  function notifyPortraitReady() {
+    if (portraitReadyNotified) return
+    portraitReadyNotified = true
+    options.onPortraitReady?.()
+  }
 
   function cellIndex(col: number, row: number) {
     return row * cols + col
@@ -889,24 +902,40 @@ export function createAsciiBackground(
     if (assetsReady >= assetsNeeded) {
       portraitLayout = computePortraitLayout()
       rebuildPersonCells()
+      notifyPortraitReady()
     }
   }
 
+  function bindPortrait(
+    target: HTMLImageElement,
+    url: string,
+    fromCache: boolean,
+    onDecoded: () => void,
+  ) {
+    if (fromCache || (target.complete && target.naturalWidth > 0)) {
+      onDecoded()
+      return
+    }
+    target.addEventListener('load', onDecoded)
+    target.addEventListener('error', onDecoded)
+    target.src = url
+  }
+
   if (image && portraitUrl) {
-    image.addEventListener('load', () => {
+    bindPortrait(image, portraitUrl, Boolean(cachedLuminance), () => {
       cachePortraitPixels()
       onAssetReady()
     })
-    image.src = portraitUrl
   }
 
   if (colorImage && portraitColorUrl) {
-    colorImage.addEventListener('load', () => {
+    bindPortrait(colorImage, portraitColorUrl, Boolean(cachedColor), () => {
       cacheColorPortraitPixels()
       onAssetReady()
     })
-    colorImage.src = portraitColorUrl
   }
+
+  if (assetsNeeded === 0) notifyPortraitReady()
 
   resize()
   measureHintLabel()

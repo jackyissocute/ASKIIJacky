@@ -66,7 +66,7 @@ export function LoadingScreen({
     return () => window.clearInterval(id)
   }, [phase])
 
-  // 80% only gates the text sequence
+  // 80% real progress starts the humor typewriter (bar keeps moving independently)
   useEffect(() => {
     if (typingStartedRef.current) return
     if (progress < TEXT_AT) return

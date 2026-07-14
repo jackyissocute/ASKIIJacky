@@ -14,77 +14,49 @@ type AssetStep = {
   load: (onFraction: (f: number) => void) => Promise<void>
 }
 
-function decodeBlobUrl(url: string): Promise<void> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => {
-      if (img.decode) {
-        img.decode().then(() => resolve(), () => resolve())
-      } else {
-        resolve()
-      }
-    }
-    img.onerror = () => resolve()
-    img.src = url
-  })
+/** Same-origin portrait cache shared with asciiBackground (CORS Image, not blob). */
+const imageCache = new Map<string, HTMLImageElement>()
+
+export function getCachedImage(url: string): HTMLImageElement | undefined {
+  const img = imageCache.get(url)
+  if (img?.complete && img.naturalWidth > 0) return img
+  return undefined
 }
 
-/** Fetch with byte progress when Content-Length is present; always decode pixels. */
-async function loadImage(
+/**
+ * Load like asciiBackground does (crossOrigin anonymous) so the HTTP cache
+ * is shared and the portrait is warm before the canvas mounts.
+ */
+function loadImage(
   src: string,
   onFraction: (f: number) => void,
 ): Promise<void> {
-  try {
-    const res = await fetch(src)
-    if (!res.ok) throw new Error(String(res.status))
-    const total = Number(res.headers.get('content-length')) || 0
-    if (res.body && total > 0) {
-      const reader = res.body.getReader()
-      const chunks: Uint8Array[] = []
-      let received = 0
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        if (value) {
-          chunks.push(value)
-          received += value.byteLength
-          onFraction(Math.min(1, received / total))
-        }
-      }
-      const blob = new Blob(chunks)
-      const url = URL.createObjectURL(blob)
-      try {
-        await decodeBlobUrl(url)
-      } finally {
-        URL.revokeObjectURL(url)
-      }
+  return new Promise((resolve) => {
+    const cached = getCachedImage(src)
+    if (cached) {
       onFraction(1)
+      resolve()
       return
     }
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    try {
-      await decodeBlobUrl(url)
-    } finally {
-      URL.revokeObjectURL(url)
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.decoding = 'async'
+    onFraction(0)
+
+    const finish = () => {
+      if (img.complete && img.naturalWidth > 0) imageCache.set(src, img)
+      onFraction(1)
+      resolve()
     }
-    onFraction(1)
-  } catch {
-    // Fallback: classic Image() — no byte progress
-    await new Promise<void>((resolve) => {
-      const img = new Image()
-      img.onload = () => {
-        if (img.decode) {
-          img.decode().then(() => resolve(), () => resolve())
-        } else {
-          resolve()
-        }
-      }
-      img.onerror = () => resolve()
-      img.src = src
-    })
-    onFraction(1)
-  }
+
+    img.onload = () => {
+      if (img.decode) img.decode().then(finish, finish)
+      else finish()
+    }
+    img.onerror = finish
+    img.src = src
+  })
 }
 
 async function loadFonts(onFraction: (f: number) => void): Promise<void> {
@@ -151,8 +123,10 @@ async function runPreload(): Promise<void> {
     emit({ progress: done, label: step.label })
     let lastEmit = done
     await step.load((fraction) => {
-      const next = Math.min(1, done + step.weight * Math.min(1, Math.max(0, fraction)))
-      // ~1% UI updates — still real progress, less React thrash
+      const next = Math.min(
+        1,
+        done + step.weight * Math.min(1, Math.max(0, fraction)),
+      )
       if (next - lastEmit < 0.01 && fraction < 1) return
       lastEmit = next
       emit({ progress: next, label: step.label })
