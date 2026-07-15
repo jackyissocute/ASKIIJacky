@@ -72,7 +72,7 @@ Most site copy and links live in one place:
 | --- | --- |
 | Name, nav, social links | [`src/content/siteContent.ts`](src/content/siteContent.ts) |
 | About text and projects | [`src/content/siteContent.ts`](src/content/siteContent.ts) |
-| Resume PDF | Replace [`public/Jacky_Lin_Resume_2026_Summer_Polished.pdf`](public/Jacky_Lin_Resume_2026_Summer_Polished.pdf) or update `PUBLIC_ASSETS.resume` in [`src/config/site.ts`](src/config/site.ts) |
+| Resume PDF | Replace [`public/Resume_Jacky_Lin_2026_Summer.pdf`](public/Resume_Jacky_Lin_2026_Summer.pdf) or update `PUBLIC_ASSETS.resume` in [`src/config/site.ts`](src/config/site.ts) |
 | Portrait images | [`public/jacky-lin.png`](public/jacky-lin.png), [`public/jacky-lin-color.png`](public/jacky-lin-color.png), [`public/jacky-lin-profile.jpg`](public/jacky-lin-profile.jpg) |
 | GitHub Pages base path | [`src/config/site.ts`](src/config/site.ts) (`REPO_NAME`) and [`vite.config.ts`](vite.config.ts) |
 | ASCII background tuning | [`src/lib/asciiBackground.ts`](src/lib/asciiBackground.ts) |
